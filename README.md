@@ -270,3 +270,7 @@ Vorssaint is free and will stay that way. If it earned its place in your menu ba
 <p align="center">
   <sub>Made by <a href="https://x.com/vorssaint">@vorssaint</a></sub>
 </p>
+
+## Local BoDian / RightSight integration
+
+This checkout adds optional charging control (macOS 27+), persistent battery-energy history, Finder context menus, and WebP output. Existing cut/paste, monitoring, and media engines are reused. See [scope, build and validation boundaries](docs/LOCAL_PORTS.md). Initialize the pinned libwebp submodule before building.

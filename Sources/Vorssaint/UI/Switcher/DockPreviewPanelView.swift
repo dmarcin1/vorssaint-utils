@@ -174,14 +174,14 @@ private struct DockPreviewPanelContent: View {
         .frame(width: stacksVertically ? DockPreviewSupport.cardWidth
                    + DockPreviewSupport.panelPadding * 2 : nil,
                height: stacksVertically ? nil : cardRunHeight)
-        .background(HUDBackdrop(cornerRadius: 18,
+        .background(HUDBackdrop(cornerRadius: 12,
                                 opacity: DockPreviewSupport.sanitizedBackgroundOpacity(backgroundOpacity)))
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         // The hairline keeps its full strength as the material fades: it is what
         // still draws the panel's shape once the frost stops doing it.
         .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .strokeBorder(minimalPreviews ? Color.clear : Color.white.opacity(0.12), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(minimalPreviews ? Color.clear : Color.white.opacity(0.18), lineWidth: 1)
         )
     }
 
@@ -409,83 +409,71 @@ private struct DockPreviewCard: View {
 
     var body: some View {
         VStack(spacing: DockPreviewSupport.cardTitleSpacing) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(minimalPreviews ? Color.clear : Color.white.opacity(0.06))
+            if !minimalPreviews {
+                HStack(spacing: 5) {
+                    if let icon = window.appIcon {
+                        Image(nsImage: icon)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 14, height: 14)
+                    }
+                    Text(window.displayTitle)
+                        .font(.system(size: 11, weight: .medium))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .foregroundStyle(.primary)
+                    Spacer(minLength: 4)
+                    if window.isMinimized || window.isFullscreen {
+                        statusBadges
+                    }
+                    closeButton
+                }
+                .frame(width: DockPreviewSupport.cardThumbnailWidth, height: DockPreviewSupport.cardTitleHeight)
+            }
 
+            ZStack {
                 if let preview {
                     Image(decorative: preview, scale: 2)
                         .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                        .padding(DockPreviewSupport.cardThumbnailInset)
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: DockPreviewSupport.cardThumbnailWidth,
+                               height: DockPreviewSupport.cardThumbnailHeight)
+                        .clipped()
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.5)
+                        )
+                } else if window.tabIndex != nil {
+                    webTabPlaceholder(window: window)
                 } else if let icon = window.appIcon {
-                    // Drawn as a watermark, not as content. Every card in a
-                    // panel belongs to the app whose Dock icon opened it, and
-                    // that icon is already in the header, so this says nothing
-                    // new — it only fills the space until a capture lands. At
-                    // full strength the capture replacing it reads as a jump;
-                    // at this weight it reads as the space filling in, and it
-                    // costs no transition, so nothing takes longer.
-                    Image(nsImage: icon)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: DockPreviewSupport.cardFallbackIconSize,
-                               height: DockPreviewSupport.cardFallbackIconSize)
-                        .opacity(0.35)
-                }
-
-                // One row along the bottom of the picture: the app on the
-                // left, the window's state on the right, sharing a baseline --
-                // the App Switcher's card, which shows the same two things
-                // about the same kind of thing.
-                if !minimalPreviews {
-                    VStack(spacing: 0) {
-                        Spacer(minLength: 0)
-                        HStack(alignment: .bottom, spacing: 8) {
-                            if let icon = window.appIcon {
-                                Image(nsImage: icon)
-                                    .resizable()
-                                    .frame(width: DockPreviewSupport.cardAppBadgeSize,
-                                           height: DockPreviewSupport.cardAppBadgeSize)
-                                    .shadow(radius: 3)
-                                    .padding(.leading, -DockPreviewSupport.cardAppBadgeArtworkInset)
-                                    .padding(.bottom, -DockPreviewSupport.cardAppBadgeArtworkInset)
-                                    .opacity(showsAppBadge ? 1 : 0)
-                                    .accessibilityHidden(true)
-                            }
-                            Spacer(minLength: 0)
-                            if hasStatusBadges {
-                                HStack(spacing: 5) {
-                                    statusBadges
-                                }
-                            }
-                        }
-                        .padding(7)
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(Color.primary.opacity(0.04))
+                        Image(nsImage: icon)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: DockPreviewSupport.cardFallbackIconSize,
+                                   height: DockPreviewSupport.cardFallbackIconSize)
+                            .opacity(0.4)
                     }
                 }
             }
             .frame(width: DockPreviewSupport.cardThumbnailWidth,
                    height: DockPreviewSupport.cardThumbnailHeight)
-
-            if !minimalPreviews { titleBand }
         }
         .padding(DockPreviewSupport.cardPadding)
         .frame(width: DockPreviewSupport.cardWidth, height: DockPreviewSupport.cardHeight)
-        // The selection animates on the two layers that draw it. Animating
-        // the card instead put every child in the transaction, so arriving on a
-        // card re-composited the shadowed app badge and it blinked once.
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(isSelected ? Color.white.opacity(0.14) : Color.clear)
-                .animation(.spring(response: 0.2, dampingFraction: 0.82), value: isSelected)
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(isSelected ? Color.accentColor.opacity(0.18) : (isHovering ? Color.primary.opacity(0.08) : Color.clear))
+                .animation(.spring(response: 0.18, dampingFraction: 0.82), value: isHovering)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(isSelected ? Color.accentColor : Color.clear, lineWidth: 2)
-                .animation(.spring(response: 0.2, dampingFraction: 0.82), value: isSelected)
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .strokeBorder(isSelected ? Color.accentColor : (isHovering ? Color.primary.opacity(0.20) : Color.clear), lineWidth: isSelected ? 1.5 : 1)
         )
-        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay {
             if window.windowID != nil {
                 DockPreviewMiddleClick(onClose: onMiddleClick)
@@ -503,6 +491,60 @@ private struct DockPreviewCard: View {
         .accessibilityLabel(window.spokenLabel(noOpenWindow: l10n.s.switcherNoOpenWindow,
                                                hiddenApp: l10n.s.panelHiddenItem,
                                                otherDesktop: l10n.s.switcherOtherDesktop))
+    }
+
+    private func webTabPlaceholder(window: SwitcherItem) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(Color.primary.opacity(0.04))
+
+            VStack(spacing: 8) {
+                if let host = hostFromURL(window.tabURL), !host.isEmpty {
+                    HStack(spacing: 4) {
+                        Image(systemName: "globe")
+                            .font(.system(size: 8))
+                            .foregroundStyle(.secondary)
+                        Text(host)
+                            .font(.system(size: 9, weight: .medium, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(
+                        Capsule()
+                            .fill(Color.primary.opacity(0.06))
+                    )
+                }
+
+                if let icon = window.appIcon {
+                    Image(nsImage: icon)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 22, height: 22)
+                        .opacity(0.7)
+                }
+
+                Text(window.displayTitle)
+                    .font(.system(size: 10, weight: .regular))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 10)
+            }
+            .padding(.vertical, 8)
+        }
+        .frame(width: DockPreviewSupport.cardThumbnailWidth,
+               height: DockPreviewSupport.cardThumbnailHeight)
+        .overlay(
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.5)
+        )
+    }
+
+    private func hostFromURL(_ urlString: String?) -> String? {
+        guard let urlString, !urlString.isEmpty, let url = URL(string: urlString) else { return nil }
+        return url.host ?? url.scheme
     }
 
     @ViewBuilder
@@ -605,17 +647,18 @@ private struct DockPreviewCard: View {
                 suppressNextCommit = false
             }
         } label: {
-            Image(systemName: "xmark.circle.fill")
-                .font(.system(size: 13, weight: .medium))
-                .symbolRenderingMode(.palette)
-                .foregroundStyle(Color.white.opacity(isCloseHovering ? 0.95 : 0.72),
-                                 Color(red: 1.0, green: 0.38, blue: 0.33).opacity(isCloseHovering ? 1 : 0.92))
+            Image(systemName: "xmark")
+                .font(.system(size: 8, weight: .bold))
+                .foregroundStyle(isCloseHovering ? Color.white : Color.secondary)
                 .frame(width: 16, height: 16)
-                .contentShape(Circle())
+                .background(
+                    RoundedRectangle(cornerRadius: 3.5, style: .continuous)
+                        .fill(isCloseHovering ? Color.red.opacity(0.9) : (isHovering ? Color.primary.opacity(0.08) : Color.clear))
+                )
         }
         .buttonStyle(.plain)
-        .opacity(showsPreviewControls ? 1 : 0)
-        .allowsHitTesting(showsPreviewControls)
+        .opacity(isHovering || isSelected ? 1 : 0)
+        .allowsHitTesting(isHovering || isSelected)
         .onHover { isCloseHovering = $0 }
         .help(closeActionTitle)
         .accessibilityLabel(closeActionTitle)

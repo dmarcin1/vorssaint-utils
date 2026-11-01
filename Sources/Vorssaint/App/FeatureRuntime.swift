@@ -237,6 +237,9 @@ final class FeatureRuntime: ObservableObject {
     /// permission it depends on) changes. Most on-demand tools have no binding;
     /// Media only binds so uninstalling it can cancel work already in flight.
     private static let bindings: [AppFeature: () -> Void] = [
+        .chargingControl: { MainActor.assumeIsolated { ChargeModel.shared.syncWithPreferences() } },
+        .batteryHistory: { MainActor.assumeIsolated { EnergyMonitor.shared.syncWithPreferences() } },
+        .finderMenu: { MainActor.assumeIsolated { FinderMenuService.shared.syncWithPreferences() } },
         .switcher: {
             WindowUseTracker.shared.syncWithFeatures()
             AppSwitcher.shared.syncWithPreferences()
@@ -426,6 +429,10 @@ extension AppFeature {
     /// or when the feature depends on no hardware at all.
     var hardwareUnsupportedReason: String? {
         switch self {
+        case .chargingControl:
+            return ChargeModel.isSupported ? nil : "macOS 27+ · MacBook"
+        case .batteryHistory:
+            return PowerSampler.hasInternalBattery ? nil : "MacBook"
         case .fanControl:
             return FanControlHardware.hasControllableFan
                 ? nil : FeatureStrings.fanControl(L10n.shared.language).noFans

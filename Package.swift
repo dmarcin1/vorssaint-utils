@@ -8,6 +8,9 @@ let package = Package(
     name: "Vorssaint",
     platforms: [.macOS(.v14)],
     targets: [
+        .target(name: "ChargeShared", path: "Sources/ChargeShared"),
+        .systemLibrary(name: "CSQLite", path: "Sources/CSQLite"),
+        .systemLibrary(name: "CWebP", path: "Sources/CWebP"),
         .systemLibrary(
             name: "HIDEventSystem",
             path: "Sources/HIDEventSystem"
@@ -18,7 +21,7 @@ let package = Package(
         ),
         .executableTarget(
             name: "Vorssaint",
-            dependencies: ["VMStatisticsCompat", "HIDEventSystem"],
+            dependencies: ["VMStatisticsCompat", "HIDEventSystem", "ChargeShared", "CSQLite", "CWebP"],
             path: "Sources/Vorssaint"
         )
     ]

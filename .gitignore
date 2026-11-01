@@ -16,6 +16,7 @@ dist/
 # Local-only working notes
 AGENTS.md
 CLAUDE.md
+.handoff/
 
 # macOS noise
 .DS_Store

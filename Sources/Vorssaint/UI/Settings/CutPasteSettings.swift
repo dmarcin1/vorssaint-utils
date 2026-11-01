@@ -31,6 +31,9 @@ struct CutPasteSettings: View {
 
     var body: some View {
         Form {
+            if AppFeature.finderMenu.isAvailable {
+                FinderMenuSettings().settingsFormSectionAnchor(.finderMenu)
+            }
             if AppFeature.finderCutPaste.isAvailable {
                 Section {
                     Toggle(l10n.s.cutPasteEnable, isOn: $enabled)

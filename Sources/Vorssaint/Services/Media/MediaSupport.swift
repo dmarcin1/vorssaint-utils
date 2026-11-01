@@ -47,7 +47,7 @@ struct MediaDurationLoading {
 }
 
 enum MediaImageFormat: String, CaseIterable, Codable, Identifiable {
-    case jpeg, heic, png, pdf
+    case jpeg, heic, png, pdf, webp
 
     var id: String { rawValue }
 
@@ -56,6 +56,7 @@ enum MediaImageFormat: String, CaseIterable, Codable, Identifiable {
         case .jpeg: return "jpg"
         case .heic: return "heic"
         case .png: return "png"
+        case .webp: return "webp"
         case .pdf: return "pdf"
         }
     }

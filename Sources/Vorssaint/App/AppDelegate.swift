@@ -312,6 +312,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         return .terminateLater
     }
 
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls { _ = FinderMenuService.shared.handle(url) }
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         isTerminating = true
         CommandBarService.shared.restoreBorrowedInputSource()

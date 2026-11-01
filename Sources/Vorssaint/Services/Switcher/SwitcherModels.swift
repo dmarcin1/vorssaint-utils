@@ -116,9 +116,18 @@ struct SwitcherItem: Identifiable, Equatable {
     /// bounds. Never an AppKit (bottom-left) frame, so it can be compared with
     /// `CGDisplayBounds` directly. `.zero` for an entry without a window.
     let frame: CGRect
+    var tabIndex: Int? = nil
+    var tabWindowID: String? = nil
+    var tabURL: String? = nil
+    var isTabActive: Bool = true
 
     /// The window whose thumbnail represents this entry.
-    var previewWindowID: CGWindowID? { windowID }
+    var previewWindowID: CGWindowID? {
+        if tabIndex != nil {
+            return isTabActive ? windowID : nil
+        }
+        return windowID
+    }
 
     /// Label shown under the thumbnail; untitled windows fall back to the app name.
     var displayTitle: String {
@@ -239,5 +248,20 @@ struct SwitcherItem: Identifiable, Equatable {
                      isAppHidden: isAppHidden,
                      isMinimized: false, isFullscreen: false,
                      isOnHiddenSpace: false, frame: .zero)
+    }
+
+    static func tab(windowID: CGWindowID, title: String, appName: String, pid: pid_t,
+                    windowOwnerPID: pid_t? = nil, tabIndex: Int, tabWindowID: String,
+                    tabURL: String, frame: CGRect, isTabActive: Bool = true) -> SwitcherItem {
+        var item = SwitcherItem(id: "t:\(windowID):\(tabIndex)", title: title, appName: appName,
+                     pid: pid, windowOwnerPID: windowOwnerPID ?? pid,
+                     windowID: windowID, isOnScreen: true,
+                     isAppHidden: false, isMinimized: false, isFullscreen: false,
+                     isOnHiddenSpace: false, frame: frame)
+        item.tabIndex = tabIndex
+        item.tabWindowID = tabWindowID
+        item.tabURL = tabURL
+        item.isTabActive = isTabActive
+        return item
     }
 }

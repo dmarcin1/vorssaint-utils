@@ -48,6 +48,12 @@ struct EnergySettings: View {
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+                if (focus == nil || focus == .chargingControl), AppFeature.chargingControl.isAvailable {
+                    ChargingSettingsCard().settingsSectionAnchor(.chargingControl, cornerRadius: 16)
+                }
+                if (focus == nil || focus == .batteryHistory), AppFeature.batteryHistory.isAvailable {
+                    BatteryHistoryCard().settingsSectionAnchor(.batteryHistory, cornerRadius: 16)
+                }
                 if (focus == nil || focus == .keepAwake), AppFeature.keepAwake.isAvailable {
                     keepAwakeCard
                         .settingsSectionAnchor(.keepAwake, cornerRadius: 16)
@@ -99,6 +105,8 @@ struct EnergySettings: View {
 
     private var pageTitle: String {
         switch focus {
+        case .chargingControl: return PortStrings.text("charging")
+        case .batteryHistory: return PortStrings.text("history")
         case .keepAwake: return l10n.s.keepAwakeTitle
         case .brightness: return FeatureStrings.brightness(l10n.language).pageTitle
         case .extraBrightness: return l10n.s.extraBrightnessName
@@ -109,6 +117,8 @@ struct EnergySettings: View {
 
     private var pageDescription: String {
         switch focus {
+        case .chargingControl: return PortStrings.text("chargingDescription")
+        case .batteryHistory: return PortStrings.text("historyDescription")
         case .keepAwake: return FeatureStrings.hub(l10n.language).descKeepAwake
         case .brightness: return FeatureStrings.brightness(l10n.language).hubDescription
         case .extraBrightness: return FeatureStrings.hub(l10n.language).descExtraBrightness

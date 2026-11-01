@@ -1137,6 +1137,9 @@ extension AppFeature {
     func hubTitle(_ s: Strings, hub: FeatureHubStrings,
                   language: AppLanguage = L10n.shared.language) -> String {
         switch self {
+        case .chargingControl: return PortStrings.text("charging", language)
+        case .batteryHistory: return PortStrings.text("history", language)
+        case .finderMenu: return PortStrings.text("finder", language)
         case .switcher: return s.switcherSection
         case .dockPreview: return s.dockPreviewName
         case .dockClick: return hub.titleDockClick
@@ -1223,6 +1226,9 @@ extension AppFeature {
 
     func hubDescription(_ hub: FeatureHubStrings) -> String {
         switch self {
+        case .chargingControl: return PortStrings.text("chargingDescription")
+        case .batteryHistory: return PortStrings.text("historyDescription")
+        case .finderMenu: return PortStrings.text("finderDescription")
         case .switcher: return hub.descSwitcher
         case .dockPreview: return hub.descDockPreview
         case .dockClick: return hub.descDockClick
@@ -1337,7 +1343,8 @@ extension AppPermission {
         case .accessibility: return hub.explainAccessibility
         case .screenRecording: return hub.explainScreenRecording
         case .fullDiskAccess: return hub.explainFullDisk
-        case .filesAndFolders: return hub.explainFilesAndFolders
+        case .filesAndFolders:
+            return AppFeature.finderMenu.isAvailable ? PortStrings.text("folderPermission") : hub.explainFilesAndFolders
         case .notifications: return hub.explainNotifications
         case .automationFinder: return hub.explainAutomationFinder
         case .automationPlayback: return FeatureStrings.notchMusicExtras(L10n.shared.language).automationExplanation

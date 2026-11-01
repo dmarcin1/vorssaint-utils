@@ -386,17 +386,17 @@ enum FeatureCatalogTests {
 
         // MARK: Features hub catalog
 
-        suite.expect(AppFeature.allCases.count == 79, "feature catalog has 79 features")
+        suite.expect(AppFeature.allCases.count == 82, "feature catalog has 82 features")
         suite.expect(Set(AppFeature.allCases.map(\.rawValue)).count == AppFeature.allCases.count,
                "feature ids are unique")
         suite.expect(AppFeature.allCases.map(\.rawValue) == [
             "switcher", "dockPreview", "dockClick", "windowMaximizer", "windowLayout", "autoQuit", "spacesOrder",
             "scrollInverter", "scrollHorizontal", "scrollZoom", "focusFollowsMouse", "smoothScroll", "linearScroll", "mouseAcceleration", "mouseNavigation", "mouseButtonShortcuts", "middleClick",
             "mouseClickDebounce", "keyboardDebounce", "textSnippets", "superKey", "quitWindowProtection",
-            "clipboardHistory", "pastePlain", "finderCutPaste", "finderRename", "shelf", "urlCleaner",
+            "clipboardHistory", "pastePlain", "finderCutPaste", "finderRename", "finderMenu", "shelf", "urlCleaner",
             "diskImageInstaller",
             "mixer", "soundOutputSwitcher", "audioPriority", "micMute", "musicBlock",
-            "keepAwake", "brightness", "extraBrightness", "bluetoothSleep",
+            "keepAwake", "brightness", "extraBrightness", "bluetoothSleep", "chargingControl", "batteryHistory",
             "quickLauncher", "quickToggles", "quitApps", "colorPicker", "screenOCR", "cleaningMode", "mediaTools",
             "cleaner", "uninstaller", "homebrew", "appUpdates", "screenshot", "cameraPreview",
             "radialMenu", "scratchpad", "commandBar", "screenRecorder", "wallpaper", "killProcess", "portManager", "notch", "notchCalendar", "notchNotifications", "notchGestures", "notchTimer", "notchAccessories", "notchLyrics", "notchQueue", "notchLiveEqualizer", "notchDownloads", "notchAgents", "notchWatch", "notchMascot",
@@ -1669,9 +1669,9 @@ enum FeatureCatalogTests {
                               DefaultsKey.whatsAppOrganizerEnabled,
                               DefaultsKey.whatsAppDownloadsNotify]) == [.cleaner],
                "the experimental WhatsApp organizer can offer an undo notification")
-        suite.expect(activeSet(.filesAndFolders) == [],
-               "WhatsApp Downloads folder access stays unused until that cleaner is turned on")
-        suite.expect(activeSet(.filesAndFolders, on: [DefaultsKey.whatsAppDownloadsEnabled]) == [.cleaner],
+        suite.expect(activeSet(.filesAndFolders) == [.finderMenu],
+               "Finder menu is an on-demand folder user without enabling automatic cleaning")
+        suite.expect(activeSet(.filesAndFolders, on: [DefaultsKey.whatsAppDownloadsEnabled]) == [.cleaner, .finderMenu],
                "the cleaner owns WhatsApp Downloads folder access")
 
         suite.expect(activeSet(.fullDiskAccess) == [.cleaner, .uninstaller],
@@ -2181,6 +2181,12 @@ enum FeatureCatalogTests {
         func pageVisible(_ page: SettingsPage, available: Set<AppFeature>) -> Bool {
             FeatureVisibilitySupport.isPageVisible(page) { available.contains($0) }
         }
+        for feature in [AppFeature.chargingControl, .batteryHistory, .finderMenu] {
+            suite.expect(!feature.installedByDefault, "ported features require opt-in")
+        }
+        suite.expect(pageVisible(.energy, available: [.chargingControl]), "charging control alone keeps its page reachable")
+        suite.expect(pageVisible(.energy, available: [.batteryHistory]), "energy history alone keeps its page reachable")
+        suite.expect(pageVisible(.cutPaste, available: [.finderMenu]), "Finder menu alone keeps its page reachable")
         let allFeatures = Set(AppFeature.allCases)
         suite.expect(pageVisible(.mouse, available: allFeatures), "mouse page shows with everything available")
         suite.expect(pageVisible(.mouse, available: [.middleClick]),
@@ -2193,8 +2199,8 @@ enum FeatureCatalogTests {
                "the mouse page hides only with all eight mouse features off")
         suite.expect(!pageVisible(.energy, available: allFeatures.subtracting([.keepAwake, .brightness,
                                                                          .extraBrightness,
-                                                                         .bluetoothSleep])),
-               "energy hides when all four of its features are off")
+                                                                         .bluetoothSleep, .chargingControl, .batteryHistory])),
+               "energy hides when all six of its features are off")
         suite.expect(pageVisible(.energy, available: [.extraBrightness]), "XDR alone keeps the energy page")
         suite.expect(pageVisible(.energy, available: [.brightness]),
                "brightness control alone keeps the energy page")

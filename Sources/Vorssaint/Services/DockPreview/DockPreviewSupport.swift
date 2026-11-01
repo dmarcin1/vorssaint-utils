@@ -252,18 +252,18 @@ enum DockPreviewSupport {
     static var cardTitleSpacing: CGFloat { cardTitleSpacing(scale: PreviewSizing.scale) }
     /// A 13pt name over a 10.5pt subtitle, beside the two 16pt window controls
     /// -- the App Switcher's title block, to the point.
-    static let cardTitleHeight: CGFloat = 29
+    static let cardTitleHeight: CGFloat = 22
     static var cardSpacing: CGFloat { gap(8, scale: PreviewSizing.scale) }
-    static var panelPadding: CGFloat { gap(10, scale: PreviewSizing.scale) }
+    static var panelPadding: CGFloat { gap(6, scale: PreviewSizing.scale) }
     static let panelHeaderHeight: CGFloat = 28
-    static var cardThumbnailInset: CGFloat { cardThumbnailInset(scale: PreviewSizing.scale) }
+    static var cardThumbnailInset: CGFloat { 0 }
 
     private static func gap(_ normal: CGFloat, scale: CGFloat) -> CGFloat {
         (normal * min(scale, 1)).rounded()
     }
-    static func cardPadding(scale: CGFloat) -> CGFloat { gap(10, scale: scale) }
-    static func cardTitleSpacing(scale: CGFloat) -> CGFloat { gap(7, scale: scale) }
-    static func cardThumbnailInset(scale: CGFloat) -> CGFloat { gap(5, scale: scale) }
+    static func cardPadding(scale: CGFloat) -> CGFloat { gap(6, scale: scale) }
+    static func cardTitleSpacing(scale: CGFloat) -> CGFloat { gap(4, scale: scale) }
+    static func cardThumbnailInset(scale: CGFloat) -> CGFloat { 0 }
 
     /// 16:10, the shape of the screen the captured window came from, so a
     /// full-height window fills the well instead of sitting between two bars.

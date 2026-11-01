@@ -485,14 +485,24 @@ final class FinderCutPaste: ObservableObject {
 
     // MARK: - Paste (move)
 
-    private func pasteAsync() {
+    func cutFromMenu(_ urls: [URL]) {
+        guard AppFeature.finderMenu.isAvailable else { return }
+        operationGeneration += 1
+        applyCut(urls)
+    }
+    func pasteFromMenu(into directory: URL) {
+        guard AppFeature.finderMenu.isAvailable, !marked.isEmpty,
+              NSPasteboard.general.changeCount == markedChangeCount else { return }
+        pasteAsync(directory)
+    }
+    private func pasteAsync(_ destination: URL? = nil) {
         guard !moveInProgress else { return }
         moveInProgress = true
         operationGeneration += 1
         let generation = operationGeneration
         let urls = marked.map(\.url)
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            guard let destPath = FinderBridge.insertionLocationPath() else {
+            guard let destPath = destination?.path ?? FinderBridge.insertionLocationPath() else {
                 DispatchQueue.main.async {
                     self?.finishPaste(generation: generation, moved: 0, failed: urls.count,
                                       stillCut: [])

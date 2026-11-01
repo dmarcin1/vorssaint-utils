@@ -82,5 +82,10 @@
 	<string>© 2026 Vorssaint</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>CFBundleURLTypes</key>
+	<array><dict>
+		<key>CFBundleURLName</key><string>Vorssaint Finder actions</string>
+		<key>CFBundleURLSchemes</key><array><string>vorssaint-finder</string></array>
+	</dict></array>
 </dict>
 </plist>

@@ -35,6 +35,13 @@ enum WindowActivator {
         }
 
         guard let app = NSRunningApplication(processIdentifier: item.pid) else { return }
+
+        if let bundleID = app.bundleIdentifier,
+           let tabIndex = item.tabIndex,
+           let tabWindowID = item.tabWindowID {
+            BrowserTabService.activateTab(bundleID: bundleID, windowID: tabWindowID, tabIndex: tabIndex)
+            return
+        }
         // Only the delayed focus guards may treat a caller's handoff app as
         // the source. The minimize restore, source staging and Space hops stay
         // limited to the App Switcher session source.

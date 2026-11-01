@@ -170,13 +170,13 @@ finalize_installed_bundle_after_child() {
             --identifier "$FAN_HELPER_ID" --sign "$LEGACY_IDENTITY" "$helper"
         [[ -f "$adapter" ]] && /usr/bin/codesign --force --strip-disallowed-xattrs \
             --identifier "$NOW_PLAYING_ADAPTER_ID" --sign "$LEGACY_IDENTITY" "$adapter"
-        /usr/bin/codesign --force --strip-disallowed-xattrs --sign "$LEGACY_IDENTITY" "$bundle"
+        /usr/bin/codesign --force --strip-disallowed-xattrs --entitlements "$ENTITLEMENTS" --sign "$LEGACY_IDENTITY" "$bundle"
     else
         [[ -f "$helper" ]] && /usr/bin/codesign --force --strip-disallowed-xattrs \
             --identifier "$FAN_HELPER_ID" --sign - "$helper"
         [[ -f "$adapter" ]] && /usr/bin/codesign --force --strip-disallowed-xattrs \
             --identifier "$NOW_PLAYING_ADAPTER_ID" --sign - "$adapter"
-        /usr/bin/codesign --force --strip-disallowed-xattrs --sign - "$bundle"
+        /usr/bin/codesign --force --strip-disallowed-xattrs --entitlements "$ENTITLEMENTS" --sign - "$bundle"
     fi
     [[ -f "$helper" ]] && /usr/bin/codesign --verify --strict "$helper"
     [[ -f "$adapter" ]] && /usr/bin/codesign --verify --strict "$adapter"
@@ -207,6 +207,7 @@ fi
 SDK_COMPAT_FLAGS=()
 VM_STATISTICS_COMPAT_FLAGS=(-I Sources/VMStatisticsCompat)
 HID_EVENT_SYSTEM_FLAGS=(-I Sources/HIDEventSystem)
+WEBP_FLAGS=(-I Sources/CWebP build/webp-source/src/libwebp.a build/webp-source/sharpyuv/libsharpyuv.a)
 if [[ "$SDK" == "$PINNED_SDK" ]]; then
     # Swift 6.4 can read the SDK 26 interfaces when given their compiler version.
     SDK_COMPAT_FLAGS=(-Xfrontend -interface-compiler-version -Xfrontend 6.3.2)
@@ -246,6 +247,7 @@ discard_test_preferences() {
 # Standalone automated tests: pure contracts plus isolated disk, subprocess,
 # keyboard-data and media fixtures. No application windows or device capture.
 if (( TEST )); then
+    zsh Tools/build-webp.sh "$SDK"
     python3 Tests/generate_sources.py
     TEST_OBJECT_DIR="build/objects/tests"
     mkdir -p "$TEST_OBJECT_DIR"
@@ -332,6 +334,7 @@ if (( TEST )); then
         Sources/Vorssaint/Services/Notch/NotchPlaybackCommand.swift
         Sources/Vorssaint/Services/Notch/NotchMusicCommandWriter.swift
         Sources/Vorssaint/Core/FeatureCatalog.swift
+        Sources/Vorssaint/Core/PortStrings.swift
         Sources/Vorssaint/Core/FeaturePresets.swift
         Sources/Vorssaint/Core/FeatureHubStrings.swift
         Sources/Vorssaint/Core/MixerScreenSharingStrings.swift
@@ -588,7 +591,7 @@ if (( TEST )); then
     swiftc -Onone -incremental -enable-batch-mode -j "$(sysctl -n hw.logicalcpu)" \
         -module-name VorssaintTests -output-file-map "$TEST_OUTPUT_FILE_MAP" \
         -target "$TARGET" -sdk "$SDK" "${SDK_COMPAT_FLAGS[@]}" \
-        "${VM_STATISTICS_COMPAT_FLAGS[@]}" "${TEST_SOURCES[@]}" -o build/metrics-tests
+        "${VM_STATISTICS_COMPAT_FLAGS[@]}" "${WEBP_FLAGS[@]}" "${TEST_SOURCES[@]}" -o build/metrics-tests
     test_status=0
     ./build/metrics-tests "${TEST_ARGS[@]}" || test_status=$?
     if (( ${#TEST_ARGS} == 0 )); then
@@ -609,6 +612,8 @@ if (( ! DEV )); then
     # changed since, and a fresh checkout has none.
     find build -mindepth 1 -maxdepth 1 ! -name objects -exec rm -rf {} + 2>/dev/null || true
 fi
+zsh Tools/build-webp.sh "$SDK"
+zsh Tools/build-charging.sh "$SDK" "$TARGET"
 APP_OBJECT_DIR="build/objects/$EXECUTABLE"
 mkdir -p build "$APP_OBJECT_DIR"
 APP_OUTPUT_FILE_MAP="$APP_OBJECT_DIR/output-file-map.json"
@@ -621,7 +626,13 @@ swiftc "${APP_OPTIMIZATION_FLAGS[@]}" -incremental -enable-batch-mode -j "$(sysc
     -output-file-map "$APP_OUTPUT_FILE_MAP" \
     -target "$TARGET" -sdk "$SDK" "${SDK_COMPAT_FLAGS[@]}" "${VM_STATISTICS_COMPAT_FLAGS[@]}" "${HID_EVENT_SYSTEM_FLAGS[@]}" \
     "${BUILD_VARIANT_FLAGS[@]}" \
-    "${APP_SOURCES[@]}" -o "build/$EXECUTABLE"
+    -I Sources/ChargeShared/include -I Sources/CSQLite build/charging/policy.o -lsqlite3 \
+    "${WEBP_FLAGS[@]}" "${APP_SOURCES[@]}" -o "build/$EXECUTABLE"
+
+echo "▸ Compiling Finder menu extension…"
+swiftc -O -parse-as-library -module-name VorssaintFinderMenu -target "$TARGET" -sdk "$SDK" "${SDK_COMPAT_FLAGS[@]}" "${BUILD_VARIANT_FLAGS[@]}" \
+    Sources/Vorssaint/Services/FinderMenu/FinderMenuContract.swift Sources/FinderMenuExtension/FinderMenuExtension.swift \
+    -framework FinderSync -Xlinker -e -Xlinker _NSExtensionMain -o build/VorssaintFinderMenu
 
 echo "▸ Compiling protected fan helper…"
 swiftc -O -target "$TARGET" -sdk "$SDK" "${SDK_COMPAT_FLAGS[@]}" "${BUILD_VARIANT_FLAGS[@]}" \
@@ -685,11 +696,28 @@ cp "build/$EXECUTABLE" "$STAGE/Contents/MacOS/$EXECUTABLE"
 cp "build/$FAN_HELPER_ID" "$STAGE/Contents/Library/LaunchServices/$FAN_HELPER_ID"
 mkdir -p "$STAGE/Contents/Frameworks"
 cp "build/$NOW_PLAYING_ADAPTER" "$STAGE/Contents/Frameworks/$NOW_PLAYING_ADAPTER"
+mkdir -p "$STAGE/Contents/Library/LaunchDaemons"
+cp build/VorssaintChargeHelper "$STAGE/Contents/MacOS/VorssaintChargeHelper"
+cp Resources/com.vorssaint.utils.charge.plist "$STAGE/Contents/Library/LaunchDaemons/"
+cp -R Resources/Licenses "$STAGE/Contents/Resources/"
+mkdir -p "$STAGE/Contents/PlugIns/VorssaintFinderMenu.appex/Contents/MacOS"
+cp build/VorssaintFinderMenu "$STAGE/Contents/PlugIns/VorssaintFinderMenu.appex/Contents/MacOS/"
+cp Resources/FinderMenu-Info.plist "$STAGE/Contents/PlugIns/VorssaintFinderMenu.appex/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $APP_BUNDLE_ID.finder-menu" "$STAGE/Contents/PlugIns/VorssaintFinderMenu.appex/Contents/Info.plist"
+cp Resources/FinderMenu.entitlements build/FinderMenu.entitlements
+cp "$ENTITLEMENTS" build/Vorssaint.entitlements
+if (( DEV )); then
+    /usr/libexec/PlistBuddy -c "Set :com.apple.security.temporary-exception.shared-preference.read-only:0 com.vorssaint.utils.dev" build/FinderMenu.entitlements
+fi
+ENTITLEMENTS="build/Vorssaint.entitlements"
 cp Resources/now-playing.pl "$STAGE/Contents/Resources/now-playing.pl"
 cp Resources/agent-prices.json "$STAGE/Contents/Resources/agent-prices.json"
 cp Resources/com.vorssaint.utils.fan-control.plist \
     "$STAGE/Contents/Library/LaunchDaemons/$FAN_HELPER_ID.plist"
 cp Resources/Info.plist "$STAGE/Contents/Info.plist"
+if (( DEV )); then
+    /usr/libexec/PlistBuddy -c "Set :CFBundleURLTypes:0:CFBundleURLSchemes:0 vorssaint-dev-finder" "$STAGE/Contents/Info.plist"
+fi
 cp CHANGELOG.md "$STAGE/Contents/Resources/CHANGELOG.md"
 for lproj in Resources/*.lproj(N); do
     cp -R "$lproj" "$STAGE/Contents/Resources/"
@@ -761,9 +789,9 @@ codesign_app() {
         codesign_with_timestamp_retry --force --strip-disallowed-xattrs --options runtime --timestamp \
             --entitlements "$ENTITLEMENTS" --sign "$DEVID" "$target"
     elif legacy_identity_installed; then
-        codesign --force --strip-disallowed-xattrs --sign "$LEGACY_IDENTITY" "$target"
+        codesign --force --strip-disallowed-xattrs --entitlements "$ENTITLEMENTS" --sign "$LEGACY_IDENTITY" "$target"
     else
-        codesign --force --strip-disallowed-xattrs --sign - "$target"
+        codesign --force --strip-disallowed-xattrs --entitlements "$ENTITLEMENTS" --sign - "$target"
     fi
 }
 
@@ -793,6 +821,16 @@ codesign_now_playing_adapter() {
     fi
 }
 
+codesign_ports() {
+    local bundle="$1"
+    local charge="$bundle/Contents/MacOS/VorssaintChargeHelper"
+    local charge_identity="-"
+    if [[ -n "$DEVID" ]]; then charge_identity="$DEVID"
+    elif legacy_identity_installed; then charge_identity="$LEGACY_IDENTITY"; fi
+    codesign --force --options runtime --identifier com.vorssaint.utils.charge-helper --sign "$charge_identity" "$charge"
+    codesign --force --options runtime --entitlements build/FinderMenu.entitlements --sign "$charge_identity" "$bundle/Contents/PlugIns/VorssaintFinderMenu.appex"
+}
+
 sign_bundle() {
     local bundle="$1"
     local executable="$bundle/Contents/MacOS/$EXECUTABLE"
@@ -808,6 +846,7 @@ sign_bundle() {
     fi
     [[ -f "$helper" ]] && codesign_fan_helper "$helper"
     [[ -f "$adapter" ]] && codesign_now_playing_adapter "$adapter"
+    codesign_ports "$bundle"
     codesign_app "$bundle"
 
     # If local filesystem metadata invalidates the first signature, sign once
@@ -817,6 +856,7 @@ sign_bundle() {
         xattr -c -r "$bundle" 2>/dev/null || true
         [[ -f "$helper" ]] && codesign_fan_helper "$helper"
         [[ -f "$adapter" ]] && codesign_now_playing_adapter "$adapter"
+        codesign_ports "$bundle"
         codesign_app "$bundle"
     fi
     [[ -f "$executable" ]] && codesign --verify --strict "$executable"

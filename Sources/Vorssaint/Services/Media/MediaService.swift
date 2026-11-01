@@ -688,7 +688,9 @@ final class MediaService: ObservableObject {
                             properties: [CFString: Any],
                             outputURL: URL,
                             options: MediaImageOptions) throws {
-        if options.format == .pdf {
+        if options.format == .webp {
+            try WebPEncoder.write(image, to: outputURL, quality: options.quality)
+        } else if options.format == .pdf {
             try writePDF(image: image, outputURL: outputURL,
                          quality: MediaSupport.sanitizedQuality(options.quality))
         } else {
@@ -1143,6 +1145,7 @@ final class MediaService: ObservableObject {
         case .jpeg: return UTType.jpeg.identifier
         case .heic: return UTType.heic.identifier
         case .png: return UTType.png.identifier
+        case .webp: return UTType.webP.identifier
         case .pdf: return UTType.pdf.identifier
         }
     }

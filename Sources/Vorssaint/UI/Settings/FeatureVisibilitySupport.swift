@@ -17,6 +17,7 @@ enum SettingsPage: Hashable {
 /// be added but never renamed.
 enum SettingsSectionAnchor: String, CaseIterable, Hashable {
     case panelConfiguration
+    case chargingControl, batteryHistory, finderMenu
     case mixer
     case audioPriority
     case musicBlocking
@@ -61,6 +62,8 @@ enum SettingsSectionAnchor: String, CaseIterable, Hashable {
 
     var page: SettingsPage {
         switch self {
+        case .chargingControl, .batteryHistory: return .energy
+        case .finderMenu: return .cutPaste
         case .panelConfiguration, .mixer, .audioPriority, .musicBlocking,
              .soundOutputSwitcher:
             return .general
@@ -284,6 +287,9 @@ extension AppFeature {
     /// Settings destination before the project compiles.
     var settingsDestination: FeatureSettingsDestination {
         switch self {
+        case .chargingControl: return FeatureSettingsDestination(.energy, sectionAnchor: .chargingControl)
+        case .batteryHistory: return FeatureSettingsDestination(.energy, sectionAnchor: .batteryHistory)
+        case .finderMenu: return FeatureSettingsDestination(.cutPaste, sectionAnchor: .finderMenu)
         case .switcher: return FeatureSettingsDestination(.switcher, sectionAnchor: .switcher)
         case .dockPreview: return FeatureSettingsDestination(.dock, sectionAnchor: .dock)
         case .dockClick: return FeatureSettingsDestination(.dock, sectionAnchor: .dockClick)
@@ -404,7 +410,7 @@ enum FeatureVisibilitySupport {
     /// always shows (General, Shortcuts, About and friends).
     static func features(for page: SettingsPage) -> [AppFeature] {
         switch page {
-        case .energy: return [.keepAwake, .brightness, .extraBrightness, .bluetoothSleep]
+        case .energy: return [.keepAwake, .brightness, .extraBrightness, .bluetoothSleep, .chargingControl, .batteryHistory]
         case .monitor: return monitorFeatures
         case .mouse: return [.scrollInverter, .scrollHorizontal, .scrollZoom, .focusFollowsMouse, .smoothScroll, .linearScroll, .mouseAcceleration, .mouseNavigation, .mouseButtonShortcuts,
                              .middleClick, .mouseClickDebounce]
@@ -414,7 +420,7 @@ enum FeatureVisibilitySupport {
         case .autoQuit: return [.autoQuit]
         case .quitProtection: return [.quitWindowProtection]
         case .clipboard: return [.clipboardHistory, .pastePlain, .finderCutPaste]
-        case .cutPaste: return [.finderCutPaste, .finderRename]
+        case .cutPaste: return [.finderCutPaste, .finderRename, .finderMenu]
         case .shelf: return [.shelf]
         case .media: return [.mediaTools]
         case .quickTools: return [.quickLauncher, .quickToggles, .quitApps, .micMute,

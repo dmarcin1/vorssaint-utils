@@ -230,9 +230,18 @@ final class DockPreviewService: ObservableObject {
 
     private func close(_ item: SwitcherItem, quitAppOnClose: Bool) {
         guard isVisible,
-              windows.contains(item),
-              let windowID = item.windowID
+              windows.contains(item)
         else { return }
+
+        if let bundleID = NSRunningApplication(processIdentifier: item.pid)?.bundleIdentifier,
+           let tabIndex = item.tabIndex, let tabWindowID = item.tabWindowID {
+            BrowserTabService.closeTab(bundleID: bundleID, windowID: tabWindowID, tabIndex: tabIndex)
+            windows.removeAll { $0.id == item.id }
+            if windows.isEmpty { endSession() }
+            return
+        }
+
+        guard let windowID = item.windowID else { return }
 
         DockPreviewSupport.performCloseAction(
             quitAppOnClose: quitAppOnClose,
@@ -704,12 +713,20 @@ final class DockPreviewService: ObservableObject {
                                       execute: work)
     }
 
-    private static func previewableWindows(for pid: pid_t) -> [SwitcherItem] {
+    static func previewableWindows(for pid: pid_t) -> [SwitcherItem] {
         let windows = WindowEnumerator.listWindowsForDockPreview(for: pid, maximumCount: 12)
             .filter { $0.windowID != nil }
         let order = DockPreviewWindowOrder.fromDefaults(
             orderByCreation: UserDefaults.standard.bool(forKey: DefaultsKey.dockPreviewOrderByCreation))
-        return DockPreviewSupport.orderedWindows(windows, order: order)
+        var ordered = DockPreviewSupport.orderedWindows(windows, order: order)
+        if let bundleID = NSRunningApplication(processIdentifier: pid)?.bundleIdentifier,
+           BrowserTabService.isSupportedBrowser(bundleID: bundleID) {
+            let tabs = BrowserTabService.fetchTabs(for: bundleID, pid: pid, windows: ordered)
+            if !tabs.isEmpty {
+                ordered = tabs
+            }
+        }
+        return ordered
     }
 
     private func beginHoverIfStillValid(token: UUID, initialHit: DockHit) {
@@ -1687,19 +1704,14 @@ final class DockPreviewPinnedPanel: ObservableObject, Identifiable {
     }
 
     private func refreshWindows() {
-        let previousIDs = windows.compactMap(\.windowID)
-        let refreshed = DockPreviewSupport.orderedWindows(
-            WindowEnumerator.listWindowsForDockPreview(for: appPID, maximumCount: Self.maximumWindowCount)
-                .filter { $0.windowID != nil },
-            order: DockPreviewWindowOrder.fromDefaults(
-                orderByCreation: UserDefaults.standard.bool(
-                    forKey: DefaultsKey.dockPreviewOrderByCreation)))
+        let previousIDs = windows.map(\.id)
+        let refreshed = DockPreviewService.previewableWindows(for: appPID)
         guard !refreshed.isEmpty else {
             closePreviewPanel()
             return
         }
 
-        let refreshedIDs = refreshed.compactMap(\.windowID)
+        let refreshedIDs = refreshed.map(\.id)
         let windowIDsChanged = refreshedIDs != previousIDs
         let windowsChanged = refreshed != windows
         let missingPreview = refreshed.contains { item in
@@ -1709,7 +1721,8 @@ final class DockPreviewPinnedPanel: ObservableObject, Identifiable {
         guard windowIDsChanged || windowsChanged || missingPreview else { return }
 
         windows = refreshed
-        previews = previews.filter { refreshedIDs.contains($0.key) }
+        let validWindowIDs = Set(refreshed.compactMap(\.windowID))
+        previews = previews.filter { validWindowIDs.contains($0.key) }
         for item in refreshed {
             guard let windowID = item.previewWindowID,
                   previews[windowID] == nil,
@@ -1718,10 +1731,11 @@ final class DockPreviewPinnedPanel: ObservableObject, Identifiable {
             previews[windowID] = cached
         }
 
-        if let selectedWindowID, !refreshedIDs.contains(selectedWindowID) {
-            self.selectedWindowID = refreshedIDs.first
+        let refreshedWindowIDs = refreshed.compactMap(\.windowID)
+        if let selectedWindowID, !refreshedWindowIDs.contains(selectedWindowID) {
+            self.selectedWindowID = refreshedWindowIDs.first
         } else if selectedWindowID == nil {
-            selectedWindowID = refreshedIDs.first
+            selectedWindowID = refreshedWindowIDs.first
         }
 
         if windowIDsChanged {

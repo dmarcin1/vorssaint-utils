@@ -59,6 +59,9 @@ enum ReleaseChangeAliases {
 
     static func aliases(for feature: AppFeature) -> [Alias] {
         switch feature {
+        case .chargingControl: return ["charging control", "charge limit"]
+        case .batteryHistory: return ["battery energy history", "energy history"]
+        case .finderMenu: return ["finder context menu", "finder menu"]
         case .switcher: return ["window switcher", "app switcher", "switcher"]
         case .dockPreview: return ["dock preview", "dock previews"]
         case .dockClick: return ["dock clicks", "dock click", "click the dock icon", "dock icon", "dock actions"]

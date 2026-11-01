@@ -439,6 +439,7 @@ struct MediaWorkspaceView: View {
                 Picker(l10n.s.mediaFormat, selection: $imageFormatRaw) {
                     Text("JPEG").tag(MediaImageFormat.jpeg.rawValue)
                     Text("PNG").tag(MediaImageFormat.png.rawValue)
+                    Text("WebP").tag(MediaImageFormat.webp.rawValue)
                     Text("HEIC").tag(MediaImageFormat.heic.rawValue)
                     Text("PDF").tag(MediaImageFormat.pdf.rawValue)
                 }
@@ -452,9 +453,8 @@ struct MediaWorkspaceView: View {
                 if imageMoreOptionsExpanded {
                     VStack(alignment: .leading, spacing: 10) {
                         imageProfileRow
-                        // PDF output never carries EXIF (the image is re-encoded
-                        // into the document), so the toggle would be a dead control.
-                        if MediaImageFormat.sanitized(imageFormatRaw) != .pdf {
+                        // PDF and WebP output re-encode pixels without EXIF metadata.
+                        if ![MediaImageFormat.pdf, .webp].contains(MediaImageFormat.sanitized(imageFormatRaw)) {
                             Toggle(l10n.s.mediaStripMetadata, isOn: $imageStripMetadata)
                                 .toggleStyle(.checkbox)
                         }
@@ -1600,6 +1600,7 @@ struct MediaWorkspaceView: View {
             case .jpeg: return .jpeg
             case .heic: return .heic
             case .png: return .png
+            case .webp: return .webP
             case .pdf: return .pdf
             }
         case .textExtractor: return .plainText
